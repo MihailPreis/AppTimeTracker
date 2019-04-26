@@ -1,0 +1,22 @@
+{
+  "name": "app-time-tracker",
+  "version": "1.0.0",
+  "description": "Simple application for tracking selected processes time",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "author": "Mike Price",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^5.0.0"
+  },
+  "dependencies": {
+    "bootstrap": "^4.3.1",
+    "jquery": "^3.4.0",
+    "popper.js": "^1.15.0",
+    "ps-list": "^6.3.0"
+  }
+}
