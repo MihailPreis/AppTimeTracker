@@ -1,10 +1,10 @@
 const psList = require('ps-list/index');
 const fs = require('fs');
 const pt = require('path');
-const moment = require('moment/moment');
-const { remote } = require('electron/electron');
+const moment = require('moment');
+const { remote } = require('electron');
 const dialog = remote.dialog;
-const configName = './config.json';
+const configName = '../config.json';
 let timer;
 
 function loadConfig() {
