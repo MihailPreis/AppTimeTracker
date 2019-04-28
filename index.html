@@ -42,21 +42,21 @@
         </nav>
 
         <div class="container">
-            <br>
 
-            <div class="tab-content">
+            <div class="tab-content top-margin">
                 <div class="tab-pane active" id="chart-tab">
-                    <button class="btn-action btn-danger" id="clear-all">Clear All</button>
-                    <div id="chartdiv"></div>
+                    <button class="btn-action btn-danger bt-margin-sm" id="clear-all">Clear All</button>
+                    <div class="chart-div" id="chartdiv-empty" style="display: none">
+                        <p class="chart-empty-block">No data to display, add processes in the "settings" tab.</p>
+                    </div>
+                    <div class="chart-div" id="chartdiv"></div>
                 </div>
-
 
                 <!-- SETTINGS TAB -->
                 <div class="tab-pane" id="settings-tab">
 
                     <label for="currentTimeoutRange">Handling timeout <span id="currentTimeout"></span> sec</label>
                     <input type="range" class="custom-range" min="10" max="60" step="10" id="currentTimeoutRange">
-
 
                     <table class="table table-sm">
                         <thead>
@@ -72,9 +72,6 @@
                         <tbody id="process-table">
                         </tbody>
                     </table>
-
-
-
 
                 </div>
             </div>
@@ -110,8 +107,6 @@
                 chart.paddingRight = 30;
                 chart.dateFormatter.inputDateFormat = "yyyy-MM-dd HH:mm";
 
-                chart.data = setColors(window.config.trackData);
-
                 // chart.events.on("datavalidated", function () {
                 //     dateAxis.zoom({ start: 1 / 15, end: 1.2 }, false, true);
                 // });
@@ -142,6 +137,8 @@
                 series1.columns.template.strokeOpacity = 1;
 
                 chart.scrollbarX = new am4core.Scrollbar();
+
+                chart.data = window.getData();
 
                 window.chart = chart
 

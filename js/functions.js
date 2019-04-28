@@ -4,17 +4,19 @@ const pt = require('path');
 const moment = require('moment');
 const { remote } = require('electron');
 const dialog = remote.dialog;
-const configName = '../config.json';
+const configName = pt.join(__dirname, '..', 'config.json');
+const longDateFormat  = 'YYYY-MM-DD HH:mm:ss';
+let config;
 let timer;
 
 function loadConfig() {
-    if (window.config) return;
+    if (config) return;
     try {
-        window.config = require(configName);
+        config = require(configName);
         console.log("Config is loaded!")
     } catch (err) {
         if (err.code === "MODULE_NOT_FOUND") {
-            window.config = {handlingProcesses: [], timeoutProcessHandling: 60000, trackData: []};
+            config = {handlingProcesses: [], timeoutProcessHandling: 60000, trackData: []};
             saveConfig(true);
         }
         else {
@@ -27,15 +29,17 @@ function loadConfig() {
 function saveConfig(isSync = false) {
     if (isSync) {
         try {
-            fs.writeFileSync(configName, JSON.stringify(window.config));
-            window.config = require(configName);
+            fs.writeFileSync(configName, JSON.stringify(config));
+            config = require(configName);
+            console.log("config sync saved");
         } catch (err) {
             console.log(err);
         }
     } else {
-        fs.writeFile(configName, JSON.stringify(window.config), function (err) {
+        fs.writeFile(configName, JSON.stringify(config), function (err) {
             if (err) return console.log(err);
-            window.config = require(configName);
+            config = require(configName);
+            console.log("config async saved");
         });
     }
 }
@@ -44,7 +48,7 @@ function refreshTable() {
     let table = $("tbody#process-table");
     table.empty();
 
-    window.config.handlingProcesses.forEach((value, index) => {
+    config.handlingProcesses.forEach((value, index) => {
         let row = `<tr>
                 <th scope=\"row\">${index + 1}</th>
                 <td>${value}</td>
@@ -58,14 +62,16 @@ function refreshTable() {
     })
 }
 
-function clearAllStoreData() {
-    window.config.trackData = [];
-    console.log(window.config.trackData);
+function updateChartData() {
     if (window.chart !== undefined) {
-        window.chart.data = [];
-        console.log(window.chart.data);
+        window.chart.data = getData();
         window.chart.invalidateData();
     }
+}
+
+function clearAllStoreData() {
+    config.trackData = [];
+    updateChartData();
     saveConfig()
 }
 
@@ -84,8 +90,8 @@ function showAddProcessesDialog() {
             if (!filePaths) return;
             filePaths.forEach(file => {
                 let name = pt.basename(file, ".app");
-                if (window.config.handlingProcesses.includes(name)) return;
-                window.config.handlingProcesses.push(name);
+                if (config.handlingProcesses.includes(name)) return;
+                config.handlingProcesses.push(name);
                 saveConfig();
                 refreshTable()
             });
@@ -95,7 +101,7 @@ function showAddProcessesDialog() {
 
 function deleteProcess(button) {
     let index = parseInt($(button).attr('id').slice(4));
-    window.config.handlingProcesses.splice(index, 1);
+    config.handlingProcesses.splice(index, 1);
     saveConfig();
     refreshTable()
 }
@@ -113,11 +119,39 @@ function updateTimeoutProcessHandling(value) {
     $('span#currentTimeout').text(value)
 }
 
+function getData() {
+    if (config.trackData.length > 0) {
+        showChartEmptyScreen(false);
+        return setColors(config.trackData)
+    } else if (config.handlingProcesses.length > 0) {
+        showChartEmptyScreen(false);
+        let date = moment(new Date()).format(longDateFormat);
+        return setColors(config.handlingProcesses.map(item => {
+            return {name: item, fromDate: date, toDate: date}
+        }))
+    } else {
+        showChartEmptyScreen(true);
+        return []
+    }
+}
+
+function showChartEmptyScreen(isShow) {
+    if (isShow) {
+        $('div#chartdiv-empty').show();
+        $('div#chartdiv').hide()
+    } else {
+        $('div#chartdiv-empty').hide();
+        $('div#chartdiv').show()
+    }
+}
+
+window.getData = getData;
+
 document.addEventListener('DOMContentLoaded', function() {
 
     loadConfig();
     refreshTable();
-    updateTimeoutProcessHandling(window.config.timeoutProcessHandling);
+    updateTimeoutProcessHandling(config.timeoutProcessHandling);
     initTimer();
 
     $('input#currentTimeoutRange').change(function() {
@@ -125,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof value == "string") {
             value = parseInt(value)
         }
-        window.config.timeoutProcessHandling = value * 1000;
+        config.timeoutProcessHandling = value * 1000;
         initTimer();
         updateTimeoutProcessHandling(value);
         saveConfig()
@@ -145,7 +179,7 @@ function initTimer() {
     if (timer) clearInterval(timer);
     timer = setInterval(function() {
         checkSelectedProcesses()
-    }, window.config.timeoutProcessHandling);
+    }, config.timeoutProcessHandling);
 }
 
 function checkSelectedProcesses() {
@@ -154,20 +188,19 @@ function checkSelectedProcesses() {
             let handlingProcesses = [];
 
             result.forEach(item => {
-                if (window.config.handlingProcesses.includes(item.name)
+                if (config.handlingProcesses.includes(item.name)
                     && !handlingProcesses.includes(item.name)) {
                     handlingProcesses.push(item.name);
                 }
             });
 
             handlingProcesses.forEach(item => {
-                let longDateFormat  = 'YYYY-MM-DD HH:mm:ss';
                 let curDate = new Date();
                 let currentIndex = null;
 
-                let data = window.config.trackData.find((value, index) => {
+                let data = config.trackData.find((value, index) => {
                     let lastDate = moment(value.toDate, longDateFormat).toDate();
-                    let result = value.name === item && curDate - lastDate <= window.config.timeoutProcessHandling * 2;
+                    let result = value.name === item && curDate - lastDate <= config.timeoutProcessHandling * 2;
                     if (result) currentIndex = index;
                     return result
                 });
@@ -183,15 +216,12 @@ function checkSelectedProcesses() {
                 }
 
                 if (currentIndex === null) {
-                    window.config.trackData.push(data);
+                    config.trackData.push(data);
                 } else {
-                    window.config.trackData[currentIndex] = data;
+                    config.trackData[currentIndex] = data;
                 }
 
-                if (window.chart !== undefined) {
-                    window.chart.data = setColors(window.config.trackData);
-                    window.chart.invalidateData();
-                }
+                updateChartData()
             });
 
             saveConfig()
